@@ -44,7 +44,7 @@ export async function createApp() {
                 if (Boom.isBoom(err)) {
                     sendError(res, err);
                 } else {
-                    logger.error('app', err.stack || err);
+                    logger.error('app', err);
                     sendError(res, Boom.internal());
                 }
             })
