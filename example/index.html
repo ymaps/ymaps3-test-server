@@ -1,23 +1,160 @@
 <!doctype html>
-<html lang="en">
-<head>
-    <title>Example @yandex/ymaps3-test-server</title>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous"/>
-    <link rel="stylesheet" href="./common.css" />
-</head>
-<body>
-    <iframe width="100%" height="500px" src="./vanilla.html" frameborder="0"></iframe>
-    <div class="content">
-        <div class="version">%VERSION%</div>
-        %README%
-    </div>
-    <div class="references">%REFERENCES%</div>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-    <script>hljs.highlightAll();</script>
-</body>
+<html>
+    <head>
+        <title>Vanila example @yandex/ymaps3-test-server</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+            integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+            crossorigin="anonymous"
+        />
+        <script src="https://api-maps.yandex.ru/v3/?apikey=%APIKEY%&lang=en_US"></script>
+        <script>
+            window.module = {exports: {}};
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/lodash.throttle@4.1.1/index.min.js"></script>
+        <script src="common.js"></script>
+        <script>
+            window.map = null;
+
+            main();
+            async function main() {
+                await ymaps3.ready;
+                ymaps3.strictMode = true;
+                const {
+                    YMap,
+                    YMapDefaultSchemeLayer,
+                    YMapDefaultFeaturesLayer,
+                    YMapListener,
+                    YMapControls,
+                    YMapCollection,
+                    YMapTileDataSource,
+                    YMapLayer
+                } = ymaps3;
+
+                const {YMapZoomControl} = await ymaps3.import('@yandex/ymaps3-controls@0.0.1');
+                const {YMapEntityTileLoader} = await ymaps3.import('@yandex/ymaps3-entity-tile-loader');
+
+                map = new YMap(
+                    document.getElementById('app'),
+                    {
+                        // mode: 'raster',
+                        location: LOCATION,
+                        behaviors: [
+                            'drag',
+                            'pinchZoom',
+                            'scrollZoom',
+                            'magnifier',
+                            'oneFingerZoom',
+                            'mouseRotate',
+                            'mouseTilt',
+                            'pinchRotate',
+                            'panTilt'
+                        ],
+                        zoomRange: ZOOM_RANGE
+                    },
+                    [
+                        new YMapDefaultSchemeLayer(),
+                        new YMapDefaultFeaturesLayer(),
+                        new YMapControls({position: 'right'}, [new YMapZoomControl({})])
+                    ]
+                );
+
+                if (SHOW_CELLS) {
+                    map.addChild(new YMapTileDataSource({id: layerId, raster: dataSource})).addChild(
+                        new YMapLayer({id: layerId, source: layerId, type: layerId})
+                    );
+                }
+
+                if (MODE !== 'bbox') {
+                    map.addChild(
+                        new YMapEntityTileLoader({
+                            /**
+                             * By default, when changing tiles, old points are immediately deleted.
+                             * But the same points may appear in the new tile, then there was no point in deleting them.
+                             * Set the delay for applying deletion operations
+                             */
+                            delayExecution: 500,
+                            tileSize: TILE_SIZE, // World is 256x256 pixels on 0 zoom in YMaps
+                            getFeatureId: (feature) => `m${feature.id}`,
+                            fetchTile: fetchTile,
+
+                            entity: makeEntity.bind(null, map)
+                        })
+                    );
+                } else {
+                    const group = new YMapCollection();
+                    map.addChild(group);
+                    let children = [];
+                    function reconcile(features) {
+                        const ids = new Set(features.map((f) => f.id));
+                        const existsIds = new Set();
+
+                        children = children.filter(({id, entity}, index) => {
+                            if (!ids.has(id)) {
+                                group.removeChild(entity);
+                                return false;
+                            }
+
+                            existsIds.add(id);
+                            return true;
+                        });
+
+                        features.forEach((f) => {
+                            if (!existsIds.has(f.id)) {
+                                const entity = makeEntity(map, f);
+                                group.addChild(entity);
+                                children.push({id: f.id, entity});
+                            }
+                        });
+                    }
+
+                    const loadFeatures = async () => {
+                        try {
+                            const features = await fetchBound(map.bounds);
+                            reconcile(features);
+                        } catch (e) {
+                            if (!e.message.includes('aborted')) {
+                                throw e;
+                            }
+                        }
+                    };
+
+                    const throttle = module.exports;
+                    const listener = new YMapListener({
+                        onUpdate: throttle(loadFeatures, 300)
+                    });
+
+                    map.addChild(listener);
+
+                    await loadFeatures();
+                }
+            }
+        </script>
+
+        <link rel="stylesheet" href="common.css" />
+    </head>
+    <body>
+        <div class="toolbar">
+            <div class="btn-group">
+                <a href="?mode=tile" class="btn btn-secondary btn-sm btn-tile">Tile</a>
+                <a href="?mode=tile-clusterer" class="btn btn-secondary btn-sm btn-tile-clusterer"
+                    >Tile with Clusterer</a
+                >
+                <a href="?mode=bbox" class="btn btn-secondary btn-sm btn-bbox">BBox</a>
+            </div>
+        </div>
+        <script>
+            const btn = document.querySelector('.btn-' + MODE);
+            if (btn) {
+                btn.classList.add('active');
+                btn.setAttribute('aria-current', 'page');
+            }
+
+            document.querySelector('.toolbar').style.display = SHOW_MODE_SWITCHER ? 'block' : 'none';
+        </script>
+        <div id="app"></div>
+    </body>
 </html>
