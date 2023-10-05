@@ -10,7 +10,7 @@ ymaps3.import.loaders.unshift(async (pkg) => {
 
 const SEARCH_PARAMS = new URLSearchParams(window.location.search);
 
-const FIXED_POINT = [55.8994004655942, 25.334356212181216];
+const FIXED_POINT = [37.623082, 55.75254];
 
 const LOCATION = {
     center: SEARCH_PARAMS.get('center') ? SEARCH_PARAMS.get('center').split(',').map(Number) : FIXED_POINT,
