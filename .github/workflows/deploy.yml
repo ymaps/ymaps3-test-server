@@ -1,0 +1,60 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3 #Setup Node
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Lint
+        run: |
+          npm run lint
+
+      - name: Test
+        run: |
+          npm test
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+            username: ${{ secrets.DOCKERHUB_USERNAME }}
+            password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push builder
+        id: docker_build_builder
+        uses: docker/build-push-action@v2
+        with:
+            context: ./
+            push: true
+            tags: chupurnov/ymaps3-test-server:latest
+            cache-from: type=registry,ref=user/app:latest
+            cache-to: type=inline
+
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
+
+      - name: Executing remote ssh commands
+        uses: appleboy/ssh-action@master
+        with:
+            host: ${{ secrets.CLOUD_HOST }}
+            username: ${{ secrets.CLOUD_USERNAME }}
+            key: ${{ secrets.CLOUD_PRIVATE_KEY }}
+            port: ${{ secrets.CLOUD_PORT }}
+            script: sudo docker system prune -f &&
+                cd ${{ secrets.SERVER_PATH }} &&
+                sudo docker compose pull web &&
+                sudo docker compose up web -d
