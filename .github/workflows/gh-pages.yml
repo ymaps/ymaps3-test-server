@@ -16,7 +16,9 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
-      - run: cp -r ./example ./dist/example && sed -i 's/%APIKEY%/${{ secrets.APIKEY }}/' ./dist/example/vanilla.html
+      - run: mkdir dist && \
+              cp -r ./example ./dist/example && \
+              sed -i 's/%APIKEY%/${{ secrets.APIKEY }}/' ./dist/example/vanilla.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v2
         with:
