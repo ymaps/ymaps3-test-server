@@ -10,15 +10,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3 #Setup Node
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4 #Setup Node
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
       - run: mkdir -p dist/example && cp -r ./example/* ./dist/example && sed -i 's/%APIKEY%/${{ secrets.APIKEY }}/' ./dist/example/index.html
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist/example
 
