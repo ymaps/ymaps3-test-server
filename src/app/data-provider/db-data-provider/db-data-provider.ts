@@ -40,6 +40,7 @@ export class DbDataProvider implements DataProvider {
     static async create(): Promise<DataProvider> {
         const provider = new DbDataProvider();
         await provider.#db.query('select 1');
+
         return provider;
     }
 }
