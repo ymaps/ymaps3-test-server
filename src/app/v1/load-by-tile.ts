@@ -3,7 +3,8 @@ import {z} from 'zod';
 import * as Boom from '@hapi/boom';
 import {formatZodError, numericString} from '../lib/zod';
 import {Bounds} from '../lib/geo';
-import {fromWorldCoordinates, tileToWorld} from '../lib/projection/projection';
+import {tileToWorld} from '../lib/projection/projection';
+import {wgs84Mercator} from '../lib/projection/wgs84-mercator';
 
 const getTileRequestSchema = z
     .object({
@@ -22,7 +23,7 @@ export async function loadByTile(req: Request, res: Response): Promise<void> {
 
     const {x: tx, y: ty, z: tz, limit} = validationResult.data;
 
-    const coordinates: Bounds = tileToWorld(tx, ty, tz).map(fromWorldCoordinates) as Bounds;
+    const coordinates: Bounds = tileToWorld(tx, ty, tz).map((p) => wgs84Mercator.fromWorldCoordinates(p)) as Bounds;
     const result = await req.dataProvider.getFeaturesByBBox(coordinates, limit);
 
     res.send({features: result.features, total: result.total, bounds: coordinates});

@@ -1,8 +1,8 @@
-import {Point} from '../geo';
+import type {Point} from '../geo';
 
 /**
  * Convert tile coordinates to special world coordinates.
- * It's not a real some standard, but it's used in ymaps3.
+ * It's not a real some standard, but it's used in mappable.
  */
 export function tileToWorld(tx: number, ty: number, tz: number): [Point, Point] {
     const ntiles = 2 ** tz;

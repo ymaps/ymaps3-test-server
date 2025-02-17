@@ -113,8 +113,8 @@ describe('/v1', () => {
                 expect(result.features[0].geometry.type).toEqual('Point');
                 expect(result.features[0].geometry.coordinates).toEqual([-62.54479907699994, 45.81303025200003]);
                 expect(result.bounds).toEqual([
-                    [-67.5, 48.92249926375823],
-                    [-56.25, 40.97989806962013]
+                    [-67.5, 49.11291284486365],
+                    [-56.25, 41.17042723849767]
                 ]);
             });
 
@@ -138,8 +138,8 @@ describe('/v1', () => {
                 const result = res.body as {features: Feature<Point>[]; bounds: Bounds; minMax: Bounds};
                 expect(result.features.length).toEqual(1);
                 expect(result.bounds).toEqual([
-                    [-67.5, 48.92249926375823],
-                    [-56.25, 40.97989806962013]
+                    [-67.5, 49.11291284486365],
+                    [-56.25, 41.17042723849767]
                 ]);
 
                 expect(result.features[0].properties?.minMax).toEqual([
